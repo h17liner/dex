@@ -359,6 +359,7 @@ func (s *Server) handlePasswordLogin(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
+		s.logger.Infof("fin2")
 		redirectURL, err := s.finalizeLogin(identity, authReq, conn.Connector)
 		if err != nil {
 			s.logger.Errorf("Failed to finalize login: %v", err)
@@ -477,6 +478,32 @@ func (s *Server) finalizeLogin(identity connector.Identity, authReq storage.Auth
 	email := claims.Email
 	if !claims.EmailVerified {
 		email += " (unverified)"
+	}
+
+	requestedGroupId := ""
+	for _, scope := range authReq.Scopes {
+		if strings.HasPrefix(scope, scopeGroupIdPrefix) {
+			requestedGroupId = scope[len(scopeGroupIdPrefix):]
+		}
+	}
+
+	if requestedGroupId != "" {
+		s.logger.Debug("Validate scopeGroupIdPrefix")
+		if identity.Groups == nil || len(identity.Groups) == 0 {
+			return "", fmt.Errorf("User %q is not a member of any group", identity.UserID)
+		}
+
+		isMember := false
+		for _, group := range identity.Groups {
+			s.logger.Debugf("group: %s  compare with requestedGroupId: %s", group, requestedGroupId)
+			if group == requestedGroupId {
+				isMember = true
+			}
+		}
+
+		if isMember == false {
+			return "", fmt.Errorf("User %q is not a member of group %q", identity.UserID, requestedGroupId)
+		}
 	}
 
 	s.logger.Infof("login successful: connector %q, username=%q, preferred_username=%q, email=%q, groups=%q",

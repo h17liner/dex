@@ -6,8 +6,8 @@ WORKDIR /usr/local/src/dex
 
 RUN apk add --no-cache --update alpine-sdk ca-certificates openssl
 
-ARG TARGETOS
-ARG TARGETARCH
+ARG TARGETOS="linux"
+ARG TARGETARCH="amd64"
 ARG TARGETVARIANT=""
 
 ENV GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT}
@@ -20,7 +20,9 @@ RUN go mod download
 
 COPY . .
 
-RUN make release-binary
+RUN go build -o /go/bin/dex -v -ldflags '-w -X main.version=v2.32.1 -extldflags "-static"' github.com/dexidp/dex/cmd/dex
+RUN go build -o /go/bin/docker-entrypoint -v -ldflags '-w -X main.version=v2.32.1 -extldflags "-static"' github.com/dexidp/dex/cmd/docker-entrypoint
+RUN #make release-binary
 
 FROM alpine:3.15.0 AS stager
 

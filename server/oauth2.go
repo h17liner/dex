@@ -115,6 +115,7 @@ const (
 	scopeProfile           = "profile"
 	scopeFederatedID       = "federated:id"
 	scopeCrossClientPrefix = "audience:server:client_id:"
+	scopeGroupIdPrefix     = "group:id:"
 )
 
 const (
@@ -362,6 +363,8 @@ func (s *Server) newIDToken(clientID string, claims storage.Claims, scopes []str
 				ConnectorID: connID,
 				UserID:      claims.UserID,
 			}
+		case strings.HasPrefix(scope, scopeGroupIdPrefix):
+			s.logger.Infof("!!! DEBUG: SCOPE %#v  !!! TOKEN: %#v ", scope, tok)
 		default:
 			peerID, ok := parseCrossClientScope(scope)
 			if !ok {
@@ -487,6 +490,10 @@ func (s *Server) parseAuthorizationRequest(r *http.Request) (*storage.AuthReques
 			hasOpenIDScope = true
 		case scopeOfflineAccess, scopeEmail, scopeProfile, scopeGroups, scopeFederatedID:
 		default:
+			if strings.HasPrefix(scope, scopeGroupIdPrefix) {
+				continue
+			}
+
 			peerID, ok := parseCrossClientScope(scope)
 			if !ok {
 				unrecognized = append(unrecognized, scope)
